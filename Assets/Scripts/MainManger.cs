@@ -19,7 +19,6 @@ public class MainManger : MonoSingleton<MainManger>
     [SerializeField] XRInteractorLineVisual    _leftLine;
     [SerializeField] XRInteractorLineVisual    _rightLine;
 
-
     public void HiedLine()
     {
         _leftLine.enabled  = false;
@@ -35,10 +34,14 @@ public class MainManger : MonoSingleton<MainManger>
     public async UniTaskVoid AddPoint(string playerId, Vector3 position)
     {
         if (Points.ContainsKey(playerId)) return;
-        var async = InstantiateAsync(pointPrefab, position, Quaternion.identity);
-        await async;
-        async.Result[0].Init(playerId);
-        Points.Add(playerId, async.Result[0]);
+
+        // 使用 Unity 的同步 Instantiate 方法进行实例化
+        Point point = UnityEngine.Object.Instantiate(pointPrefab, position, Quaternion.identity);
+        await UniTask.Yield();  // 模拟异步行为
+
+        point.Init(playerId);
+        Points.Add(playerId, point);
+
         if (GameMode == GameMode.SetPoint)
             NetManager.CreatePointRpc(playerId, position);
     }
@@ -48,6 +51,7 @@ public class MainManger : MonoSingleton<MainManger>
         if (!Points.TryGetValue(playerId, out var point)) return;
         point.Destroy().Forget();
         Points.Remove(playerId);
+
         if (GameMode == GameMode.TriggerPoint)
             NetManager.DestroyPointRpc(playerId);
     }
@@ -56,9 +60,8 @@ public class MainManger : MonoSingleton<MainManger>
 
     public void AddPoint(InputAction.CallbackContext context)
     {
-        if (!context.started ||
-            GameMode != GameMode.SetPoint)
-            return;
+        if (!context.started || GameMode != GameMode.SetPoint) return;
+
         var position = Random ? SpawnPoint.position + UnityEngine.Random.insideUnitSphere * 1 : SpawnPoint.position;
         AddPoint(Guid.NewGuid().ToString(), position).Forget();
     }
