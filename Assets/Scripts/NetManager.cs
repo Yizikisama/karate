@@ -21,4 +21,3 @@ public class NetManager : NetworkBehaviour
         MainManger.Instance.RemovePoint(id);
     }
 }
-
